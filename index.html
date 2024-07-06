@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tetris Game</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js"></script>
+  </head>
+  <body>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      canvas {
+        filter: drop-shadow(5px 5px 2px rgba(0, 0, 0, 0.4));
+      }
+
+      .controls {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 100;
+      }
+    </style>
+
+    <audio id="rotateSound" src="/audio/rotate.wav"></audio>
+    <audio id="dropSound" src="/audio/drop.mp3"></audio>
+    <audio id="lineClearSound" src="/audio/line_clear.wav"></audio>
+    <audio id="musicaFondo" src="/audio/musica-fondo.wav" loop></audio>
+
+    <div class="controls">
+      <button onclick="toggleMute()">Toggle Mute</button>
+    </div>
+
+    <script src="Tablero.js"></script>
+    <script src="Tetrimino.js"></script>
+
+    <script>
+      const MARGEN_TABLERO = 10;
+      let regulador_velocidad_teclas = 0;
+      let regulador_de_caida = 0;
+      let lineas_hechas = 0;
+      let lastTouchEnded = 0;
+      const rotateSound = document.getElementById("rotateSound");
+      const dropSound = document.getElementById("dropSound");
+      const lineClearSound = document.getElementById("lineClearSound");
+
+      const musicaFondo = document.getElementById("musicaFondo");
+      musicaFondo.volume = 0.2; // Ajustar volumen inicial
+
+      // Función para alternar entre silencio y sonido
+      function toggleMute() {
+        musicaFondo.muted = !musicaFondo.muted;
+      }
+
+      /*Generacion de fondo dinamico*/
+      let angulo_fondo = Math.random() * 360;
+      let tono_fondo = Math.random() * 360;
+      setInterval(() => {
+        document.body.style.background = `linear-gradient(
+        ${angulo_fondo}deg, 
+        hsl(${tono_fondo},100%,50%),
+        hsl(${tono_fondo},100%,0%)
+      )`;
+        angulo_fondo += Math.random();
+        tono_fondo += Math.random();
+      }, 20);
+
+      /*Dificultad hacer caer las piezas cada determinada cantidad de tiempo, simulando una especie de gravedad, esto se hace facilmente con un setInterval*/
+      setInterval(() => {
+        if (millis() - regulador_de_caida < 300) {
+          return;
+        }
+        regulador_de_caida = millis();
+        tetrimino.moverAbajo();
+      }, 500);
+
+      // Iniciar la música de fondo cuando la página se cargue
+      document.addEventListener("DOMContentLoaded", function () {
+        musicaFondo.play();
+      });
+
+      // Escuchar el evento ended para reiniciar la música de fondo
+      musicaFondo.addEventListener("ended", function () {
+        this.currentTime = 0;
+        this.play();
+      });
+
+      /*La funcion setup es nativa de p5.js
+      Y sirve para ajustar las propiedades iniciales de nuestros objetos y variables*/
+      function setup() {
+        createCanvas(900, 600);
+        tablero = new Tablero();
+        crearMapeoBaseTetriminos();
+        tetrimino = new Tetrimino();
+
+        resizeCanvas(
+          tablero.ancho + 2 * MARGEN_TABLERO,
+          tablero.alto + 2 * MARGEN_TABLERO + tablero.lado_celda
+        );
+      }
+
+      /*La funcion draw es nativa de p5.js
+      Y sirve para dar instrucciones precisas de dibujo sobre el canvas*/
+      function draw() {
+        clear();
+        dibujarPuntaje();
+        tablero.dibujar();
+        tetrimino.dibujar();
+        keyEventsTetris();
+      }
+
+      function dibujarPuntaje() {
+        push();
+        strokeWeight(3);
+        stroke("black");
+        fill("white");
+        text(
+          "Líneas: " + lineas_hechas,
+          tablero.posicion.x,
+          tablero.posicion.y - tablero.lado_celda / 2
+        );
+        pop();
+      }
+
+      let limite_regulador_velocidad_teclas = 100;
+      function keyEventsTetris() {
+        if (
+          millis() - regulador_velocidad_teclas <
+          limite_regulador_velocidad_teclas
+        ) {
+          return;
+        }
+        limite_regulador_velocidad_teclas = 100;
+        regulador_velocidad_teclas = millis();
+        if (keyIsDown(RIGHT_ARROW)) {
+          tetrimino.moverDerecha();
+          regulador_de_caida = millis();
+          dropSound.play(); // Reproducir sonido al mover derecha
+        }
+        if (keyIsDown(LEFT_ARROW)) {
+          tetrimino.moverIzquierda();
+          regulador_de_caida = millis();
+          dropSound.play(); // Reproducir sonido al mover izquierda
+        }
+        if (keyIsDown(UP_ARROW)) {
+          limite_regulador_velocidad_teclas = 150;
+          tetrimino.girar();
+          regulador_de_caida = millis();
+          rotateSound.play(); // Reproducir sonido al girar
+        }
+        if (keyIsDown(DOWN_ARROW)) {
+          tetrimino.moverAbajo();
+          regulador_de_caida = millis();
+          dropSound.play(); // Reproducir sonido al mover abajo
+        }
+        if (keyIsDown(32)) {
+          limite_regulador_velocidad_teclas = 200;
+          tetrimino.ponerEnElFondo();
+          regulador_de_caida = millis();
+          dropSound.play(); // Reproducir sonido al poner en el fondo
+        }
+      }
+
+      function touchStarted() {
+        if (touches.length === 1) {
+          let x = touches[0].x;
+          let y = touches[0].y;
+
+          if (x < width / 2) {
+            tetrimino.moverIzquierda(); // Movemos a la izquierda
+            dropSound.play(); // Reproducir sonido al mover izquierda
+          } else {
+            tetrimino.moverDerecha(); // Movemos a la derecha
+            dropSound.play(); // Reproducir sonido al mover derecha
+          }
+        } else if (touches.length === 2) {
+          // Comprueba si ha pasado suficiente tiempo desde el último toque para evitar movimientos rápidos al girar
+          if (millis() - lastTouchEnded > 300) {
+            tetrimino.girar();
+            lastTouchEnded = millis();
+            rotateSound.play(); // Reproducir sonido al girar
+          }
+        }
+      }
+
+      function touchEnded() {
+        // Espera un breve periodo de tiempo antes de permitir que se mueva hacia abajo nuevamente
+        if (millis() - lastTouchEnded > 300) {
+          tetrimino.moverAbajo();
+          lastTouchEnded = millis();
+          dropSound.play(); // Reproducir sonido al mover abajo
+        }
+      }
+    </script>
+  </body>
+</html>
