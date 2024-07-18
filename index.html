@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tetris Game</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js"></script>
-  </head>
-  <body>
     <style>
       body {
         margin: 0;
@@ -15,6 +13,8 @@
         display: flex;
         justify-content: center;
         align-items: center;
+        background: linear-gradient(0deg, hsl(0, 100%, 50%), hsl(0, 100%, 0%));
+        overflow: hidden;
       }
 
       canvas {
@@ -27,16 +27,75 @@
         right: 10px;
         z-index: 100;
       }
-    </style>
 
+      #startButton {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        padding: 1rem 2rem;
+        font-size: 3rem;
+        border: 10px inset rgb(66, 25, 3);
+        background: rgba(255, 68, 0, 0.434);
+        color: rgb(155, 64, 8);
+        text-shadow: 2px 4px 4px rgb(19, 2, 2);
+        font-weight: bolder;
+        border-radius: 50%;
+        cursor: pointer;
+        z-index: 200;
+        box-shadow: 4px 6px 18px black;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+      }
+
+      #startButton:hover {
+        animation: spinShake 1s ease forwards;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+      }
+
+      @keyframes spinShake {
+        0% {
+          transform: translate(-50%, -50%) rotate(0deg) scale(1);
+        }
+        50% {
+          transform: translate(-50%, -50%) rotate(360deg) scale(1.8);
+        }
+        100% {
+          transform: translate(-50%, -50%) rotate(360deg) scale(1);
+
+          animation: shake 0.8s ease-out;
+        }
+      }
+
+      @keyframes shake {
+        0% {
+          transform: translate(-50%, -50%) rotate(360deg) translateX(-5px);
+        }
+        25% {
+          transform: translate(-50%, -50%) rotate(360deg) translateX(5px);
+        }
+        50% {
+          transform: translate(-50%, -50%) rotate(360deg) translateX(-5px);
+        }
+        75% {
+          transform: translate(-50%, -50%) rotate(360deg) translateX(5px);
+        }
+        100% {
+          transform: translate(-50%, -50%) rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
     <audio id="rotateSound" src="rotate.wav"></audio>
     <audio id="dropSound" src="drop.mp3"></audio>
     <audio id="lineClearSound" src="line_clear.wav"></audio>
-    <audio id="musicaFondo" src="/musica-fondo.wav" loop></audio>
+    <audio id="musicaFondo" src="musica-fondo.wav" loop></audio>
 
     <div class="controls">
       <button onclick="toggleMute()">Toggle Mute</button>
     </div>
+
+    <button id="startButton">JUGAR</button>
 
     <script src="Tablero.js"></script>
     <script src="Tetrimino.js"></script>
@@ -47,6 +106,7 @@
       let regulador_de_caida = 0;
       let lineas_hechas = 0;
       let lastTouchEnded = 0;
+      let juegoIniciado = false;
       const rotateSound = document.getElementById("rotateSound");
       const dropSound = document.getElementById("dropSound");
       const lineClearSound = document.getElementById("lineClearSound");
@@ -59,20 +119,41 @@
         musicaFondo.muted = !musicaFondo.muted;
       }
 
-      /*Generacion de fondo dinamico*/
+      // Función para iniciar la música de fondo
+      function startBackgroundMusic() {
+        console.log("Starting background music");
+        musicaFondo.play();
+      }
+
+      // Función para iniciar el juego
+      function startGame() {
+        if (!juegoIniciado) {
+          console.log("Starting game");
+          juegoIniciado = true;
+          document.getElementById("startButton").style.display = "none"; // Ocultar el botón de inicio
+          startBackgroundMusic();
+          loop(); // Iniciar el bucle de dibujo
+        }
+      }
+
+      // Adjuntar el evento de clic al botón de inicio
+      const startButton = document.getElementById("startButton");
+      startButton.addEventListener("click", startGame);
+
+      // Generación de fondo dinámico
       let angulo_fondo = Math.random() * 360;
       let tono_fondo = Math.random() * 360;
       setInterval(() => {
         document.body.style.background = `linear-gradient(
-        ${angulo_fondo}deg, 
-        hsl(${tono_fondo},100%,50%),
-        hsl(${tono_fondo},100%,0%)
-      )`;
+                ${angulo_fondo}deg, 
+                hsl(${tono_fondo},100%,50%),
+                hsl(${tono_fondo},100%,0%)
+            )`;
         angulo_fondo += Math.random();
         tono_fondo += Math.random();
       }, 20);
 
-      /*Dificultad hacer caer las piezas cada determinada cantidad de tiempo, simulando una especie de gravedad, esto se hace facilmente con un setInterval*/
+      // Dificultad hacer caer las piezas cada determinada cantidad de tiempo
       setInterval(() => {
         if (millis() - regulador_de_caida < 300) {
           return;
@@ -92,8 +173,7 @@
         this.play();
       });
 
-      /*La funcion setup es nativa de p5.js
-      Y sirve para ajustar las propiedades iniciales de nuestros objetos y variables*/
+      // Función setup para p5.js
       function setup() {
         createCanvas(900, 600);
         tablero = new Tablero();
@@ -104,11 +184,12 @@
           tablero.ancho + 2 * MARGEN_TABLERO,
           tablero.alto + 2 * MARGEN_TABLERO + tablero.lado_celda
         );
+        noLoop(); // Detener el bucle de dibujo hasta que el juego inicie
       }
 
-      /*La funcion draw es nativa de p5.js
-      Y sirve para dar instrucciones precisas de dibujo sobre el canvas*/
+      // Función draw para p5.js
       function draw() {
+        if (!juegoIniciado) return; // No hacer nada si el juego no ha comenzado
         clear();
         dibujarPuntaje();
         tablero.dibujar();
