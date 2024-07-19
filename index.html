@@ -289,7 +289,9 @@
         });
 
         startButton.addEventListener("touchend", function () {
-          setTimeout(() => startButton.classList.remove("touch-active"), 700); // Duración de la animación
+          setTimeout(() => {
+            startButton.classList.remove("touch-active");
+          }, 1500);
         });
       });
     </script>
