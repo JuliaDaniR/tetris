@@ -47,7 +47,8 @@
         transition: transform 0.3s ease, box-shadow 0.3s ease;
       }
 
-      #startButton:hover {
+      #startButton:hover,
+      #startButton.touch-active {
         animation: spinShake 1s ease forwards;
         box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
       }
@@ -279,6 +280,18 @@
           dropSound.play(); // Reproducir sonido al mover abajo
         }
       }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        const startButton = document.getElementById("startButton");
+
+        startButton.addEventListener("touchstart", function () {
+          startButton.classList.add("touch-active");
+        });
+
+        startButton.addEventListener("touchend", function () {
+          setTimeout(() => startButton.classList.remove("touch-active"), 700); // Duración de la animación
+        });
+      });
     </script>
   </body>
 </html>
